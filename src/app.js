@@ -2,6 +2,10 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
+// Importe de rutas
+const guidesRouter = require('./routers/guides');
+const businessesRouter = require('./routers/businesses');
+const toursRoute = require('./routers/tours');
 
 const app = express();
 
@@ -18,5 +22,10 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Rutas
+app.use('/guides', guidesRouter);
+app.use('/businesses', businessesRouter);
+app.use('/tours', toursRoute);
 
 module.exports = app;
