@@ -9,12 +9,12 @@ const router = Router();
  * GET /guides
  * Lista guías cercanos con filtros opcionales y paginación.
  */
-router.get('/', authMiddleware(), getGuidesValidator, guidesController.getGuides);
+router.get('/', /**authMiddleware()*/ getGuidesValidator, guidesController.getGuides);
 
 /**
  * GET /guides/:id
  * Perfil completo del guía + sus tours activos con places.
  */
-router.get('/:id', authMiddleware, getGuidesValidator, guidesController.getGuideById);
+router.get('/:id', /**authMiddleware()*/ getGuidesValidator, guidesController.getGuideById);
 
 module.exports = router;

@@ -9,12 +9,12 @@ const router = Router();
  * GET /businesses
  * Lista negocios cercanos con filtros opcionales y paginación.
  */
-router.get("/", authMiddleware(), getBusinessesValidator,businessesController.getBusinesses);
+router.get("/", /**authMiddleware()*/ getBusinessesValidator,businessesController.getBusinesses);
  
 /**
  * GET /businesses/:id
  * Negocio completo con place (horarios, fotos, dirección, teléfono) y guías que lo visitan.
  */
-router.get("/:id", authMiddleware(), getBusinessByIdValidator, businessesController.getBusinessById);
+router.get("/:id",/**authMiddleware()*/ getBusinessByIdValidator, businessesController.getBusinessById);
  
 module.exports = router;
