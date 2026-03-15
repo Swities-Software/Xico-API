@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require("../config/supabase");
+const supabase = require("../config/supabase");
 
 /**
  * Limpia el shape de tour_places → places → businesses
@@ -7,32 +7,19 @@ const { supabaseAdmin } = require("../config/supabase");
 function formatPlaces(tourPlaces = []) {
   return tourPlaces.map(({ places: place }) => {
     if (!place) return null;
-
-    const { businesses: business, ...placeFields } = place;
-
     return {
-      // Campos de places (requeridos por el enunciado: foto, nombre, tipo, calificación)
-      id:         placeFields.id,
-      name:       placeFields.name,
-      type:       placeFields.type,
-      subtype:    placeFields.subtype,
-      photo_url:  placeFields.photo_url,
-      rating_avg: placeFields.rating_avg,
-      address:    placeFields.address,
-      lat:        placeFields.lat,
-      lng:        placeFields.lng,
-      // Datos del negocio aliado (null si el place no está reclamado por ningún negocio)
-      business: business
-        ? {
-            id:          business.id,
-            logo_url:    business.logo_url,
-            description: business.description,
-            price_range: business.price_range,
-            rating_avg:  business.rating_avg,
-          }
-        : null,
+      id: place.id,
+      name: place.name,
+      type: place.type,
+      subtype: place.subtype,
+      photo_url: place.photo_url,
+      rating_avg: place.rating_avg,
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+      business: null, // temporal hasta resolver la FK con Mariana
     };
-  }).filter(Boolean); // quitar nulls si algún place fue eliminado en cascada
+  }).filter(Boolean);
 }
 
 /**
@@ -41,7 +28,7 @@ function formatPlaces(tourPlaces = []) {
  * Solo retorna tours con available = true (vista pública).
  */
 async function getToursByGuideId(guideId) {
-  const { data: tours, error } = await supabaseAdmin
+  const { data: tours, error } = await supabase
     .from("tours")
     .select(`
       id,
@@ -68,14 +55,7 @@ async function getToursByGuideId(guideId) {
           rating_avg,
           address,
           lat,
-          lng,
-          businesses (
-            id,
-            logo_url,
-            description,
-            price_range,
-            rating_avg
-          )
+          lng
         )
       )
     `)
@@ -85,7 +65,6 @@ async function getToursByGuideId(guideId) {
 
   if (error) throw new Error(`Error al obtener tours del guía: ${error.message}`);
 
-  // Formatear cada tour: aplanar tour_places → places con business embebido
   return (tours ?? []).map(({ tour_places, ...tour }) => ({
     ...tour,
     places: formatPlaces(tour_places),
@@ -100,7 +79,7 @@ async function getToursByGuideId(guideId) {
  *  - Datos del negocio aliado embebidos en cada place si el place está reclamado
  */
 async function getTourDetail(id) {
-  const { data: tour, error } = await supabaseAdmin
+  const { data: tour, error } = await supabase
     .from("tours")
     .select(`
       id,
@@ -141,16 +120,7 @@ async function getTourDetail(id) {
           phone,
           schedule,
           lat,
-          lng,
-          businesses (
-            id,
-            logo_url,
-            description,
-            history,
-            price_range,
-            rating_avg,
-            photos
-          )
+          lng
         )
       )
     `)
@@ -163,18 +133,15 @@ async function getTourDetail(id) {
   }
 
   const { tour_places, guides: guideData, ...tourFields } = tour;
-
-  // Aplanar datos del guía
   const { users, ...guideFields } = guideData ?? {};
 
   return {
     ...tourFields,
-    // available_schedules ya viene como TEXT[] de PostgreSQL → array JS
     available_schedules: tourFields.available_schedules ?? [],
     guide: guideData
       ? {
           ...guideFields,
-          name:      users?.name      ?? null,
+          name: users?.name ?? null,
           photo_url: users?.photo_url ?? null,
         }
       : null,

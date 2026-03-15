@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require("../config/supabase"); // verificar nombre de como lo importa
+const supabase = require("../config/supabase");
 
 const DEFAULT_RADIUS = 5000;
 const DEFAULT_LIMIT = 20;
@@ -10,20 +10,66 @@ const DEFAULT_OFFSET = 0;
  * Llama a la función RPC search_guides_by_location definida en Supabase.
  */
 async function getGuides({ lat, lng, radius, language, min_rating, max_rate, limit, offset }) {
-    const { data, error } = await supabaseAdmin.rpc("search_guides_by_location", {
-        p_lat: lat,
-        p_lng: lng,
-        p_radius_meters: radius ?? DEFAULT_RADIUS,
-        p_language: language ?? null,
-        p_min_rating: min_rating ?? null,
-        p_max_rate: max_rate ?? null,
-        p_limit: limit ?? DEFAULT_LIMIT,
-        p_offset: offset ?? DEFAULT_OFFSET,
-    });
+    const radiusMeters = radius ?? DEFAULT_RADIUS;
+    const delta = radiusMeters / 111000;
+
+    let query = supabase
+        .from('guides')
+        .select(`
+            id,
+            bio,
+            languages,
+            hourly_rate,
+            certification,
+            rating_avg,
+            reviews_count,
+            available,
+            user_id,
+            users (
+                name,
+                photo_url
+            ),
+            tours (
+                start_lat,
+                start_lng
+            )
+        `)
+        .eq('available', true);
+
+    if (language) query = query.contains('languages', [language]);
+    if (min_rating) query = query.gte('rating_avg', parseFloat(min_rating));
+    if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
+
+    const { data, error } = await query.limit(limit ?? DEFAULT_LIMIT);
 
     if (error) throw new Error(`Error al buscar guías: ${error.message}`);
 
-    return data ?? [];
+    // Calcular distancia basada en el tour más cercano
+    const results = (data ?? [])
+        .map(guide => {
+            const { tours, users, ...guideFields } = guide;
+
+            // Encontrar el tour más cercano al punto buscado
+            let minDistance = Infinity;
+            (tours ?? []).forEach(tour => {
+                if (!tour.start_lat || !tour.start_lng) return;
+                const dLat = tour.start_lat - parseFloat(lat);
+                const dLng = tour.start_lng - parseFloat(lng);
+                const dist = Math.sqrt(dLat * dLat + dLng * dLng) * 111000;
+                if (dist < minDistance) minDistance = dist;
+            });
+
+            return {
+                ...guideFields,
+                name: users?.name ?? null,
+                photo_url: users?.photo_url ?? null,
+                distance_m: minDistance === Infinity ? null : Math.round(minDistance),
+            };
+        })
+        .filter(g => g.distance_m !== null && g.distance_m <= radiusMeters)
+        .sort((a, b) => a.distance_m - b.distance_m);
+
+    return results;
 }
 
 /**
@@ -33,7 +79,7 @@ async function getGuides({ lat, lng, radius, language, min_rating, max_rate, lim
  */
 async function getGuideById(id) {
     // 1. Perfil del guía con datos públicos del usuario
-    const { data: guide, error: guideError } = await supabaseAdmin
+    const { data: guide, error: guideError } = await supabase
         .from("guides")
         .select(`
       id,
@@ -60,7 +106,7 @@ async function getGuideById(id) {
     }
 
     // 2. Tours activos del guía con sus places
-    const { data: tours, error: toursError } = await supabaseAdmin
+    const { data: tours, error: toursError } = await supabase
         .from("tours")
         .select(`
       id,

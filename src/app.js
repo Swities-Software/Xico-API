@@ -23,6 +23,28 @@ app.get("/health", (req, res) => {
   });
 });
 
+// prueba para ver la base de datos
+app.get('/debug/tables', async (req, res) => {
+  const supabase = require('./config/supabase');
+  
+  const tables = [
+    'users', 'tourists', 'guides', 'businesses',
+    'places', 'tours', 'tour_places', 'bookings',
+    'itinerary_items', 'payments',
+    'guide_reviews', 'place_reviews', 'tour_reviews'
+  ];
+
+  const results = {};
+
+  for (const table of tables) {
+    const { error } = await supabase.from(table).select('count').limit(1);
+    results[table] = error ? '❌ No existe' : '✅ Existe';
+  }
+
+  res.json(results);
+});
+
+
 // Rutas
 app.use('/guides', guidesRouter);
 app.use('/businesses', businessesRouter);

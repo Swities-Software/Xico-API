@@ -15,6 +15,6 @@ router.get('/', /**authMiddleware()*/ getGuidesValidator, guidesController.getGu
  * GET /guides/:id
  * Perfil completo del guía + sus tours activos con places.
  */
-router.get('/:id', /**authMiddleware()*/ getGuidesValidator, guidesController.getGuideById);
+router.get('/:id', /**authMiddleware()*/ getGuideByIdValidator, guidesController.getGuideById);
 
 module.exports = router;
