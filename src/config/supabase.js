@@ -7,6 +7,10 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Faltan las variables de entorno SUPABASE_URL o SUPABASE_ANON_KEY');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// auth.persistSession: false evita que el cliente sobreescriba la service_role key
+// con el JWT del usuario tras un signUp/signIn
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 module.exports = supabase;

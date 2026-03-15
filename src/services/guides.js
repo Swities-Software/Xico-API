@@ -25,7 +25,7 @@ async function getGuides({ lat, lng, radius, language, min_rating, max_rate, lim
             reviews_count,
             available,
             user_id,
-            users (
+            users!guides_user_id_fkey (
                 name,
                 photo_url
             ),
@@ -91,7 +91,7 @@ async function getGuideById(id) {
       reviews_count,
       available,
       user_id,
-      users (
+      users!guides_user_id_fkey (
         name,
         photo_url
       )

@@ -103,7 +103,7 @@ async function getTourDetail(id) {
         hourly_rate,
         rating_avg,
         reviews_count,
-        users (
+        users!guides_user_id_fkey (
           name,
           photo_url
         )

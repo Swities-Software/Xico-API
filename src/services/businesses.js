@@ -92,7 +92,7 @@ async function getBusinessById(id) {
       rating_avg,
       user_id,
       place_id,
-      users (
+      users!businesses_user_id_fkey (
         name
       ),
       places!businesses_place_id_fkey (
@@ -131,7 +131,7 @@ async function getBusinessById(id) {
           id,
           rating_avg,
           languages,
-          users (
+          users!guides_user_id_fkey (
             name,
             photo_url
           )

@@ -1,0 +1,320 @@
+====================================================================
+  XICO API — GUÍA DE ENDPOINTS
+  Base URL: http://localhost:3000
+====================================================================
+
+CONVENCIONES
+------------
+- Todos los endpoints protegidos requieren:
+    Header: Authorization: Bearer <access_token>
+- El access_token se obtiene en /auth/login o /auth/register.
+- El access_token expira en 15 minutos.
+- El refresh_token (7 días) se guarda automáticamente en una
+  httpOnly cookie llamada "refresh_token".
+- Errores de validación retornan 400 con { "errors": [...] }.
+- Errores de auth retornan 401 (sin token / token inválido)
+  o 403 (rol insuficiente).
+
+
+====================================================================
+  AUTH
+====================================================================
+
+--------------------------------------------------------------------
+POST /auth/register
+--------------------------------------------------------------------
+Descripción : Crea un usuario en Supabase Auth, inserta en la
+              tabla users con su role y crea el perfil extendido
+              (tourists o guides según role). Para role=business
+              el perfil se crea después al reclamar un place.
+
+Auth        : No requerida
+
+Body (JSON) :
+  {
+    "name"     : string  — requerido
+    "email"    : string  — requerido, formato email válido
+    "password" : string  — requerido, mínimo 8 caracteres
+    "role"     : string  — opcional, default "tourist"
+                          valores: "tourist" | "guide" | "business"
+  }
+
+Respuesta 201:
+  {
+    "access_token": "<jwt 15min>"
+  }
+  + Cookie httpOnly: refresh_token=<jwt 7d>
+
+Errores:
+  400 — campos inválidos o email ya registrado
+  400 — error al guardar en la base de datos
+
+
+--------------------------------------------------------------------
+POST /auth/login
+--------------------------------------------------------------------
+Descripción : Verifica credenciales contra Supabase Auth, obtiene
+              el role desde la tabla users y retorna los tokens.
+
+Auth        : No requerida
+
+Body (JSON) :
+  {
+    "email"    : string — requerido
+    "password" : string — requerido
+  }
+
+Respuesta 200:
+  {
+    "access_token": "<jwt 15min>"
+  }
+  + Cookie httpOnly: refresh_token=<jwt 7d>
+
+Errores:
+  400 — campos inválidos
+  401 — credenciales incorrectas
+
+
+--------------------------------------------------------------------
+GET /auth/me
+--------------------------------------------------------------------
+Descripción : Retorna el perfil del usuario autenticado.
+              No expone password_hash ni phone.
+
+Auth        : Requerida (cualquier role)
+
+Respuesta 200:
+  {
+    "data": {
+      "id"        : UUID,
+      "name"      : string,
+      "email"     : string,
+      "role"      : "tourist" | "guide" | "business",
+      "photo_url" : string | null
+    }
+  }
+
+Errores:
+  401 — token ausente o inválido
+  404 — usuario no encontrado
+
+
+====================================================================
+  BUSINESSES
+====================================================================
+
+--------------------------------------------------------------------
+GET /businesses
+--------------------------------------------------------------------
+Descripción : Lista negocios cercanos usando PostGIS. Retorna
+              negocios con su place (ubicación, fotos, horarios).
+              Soporta filtros y paginación.
+
+Auth        : Requerida (cualquier role)
+
+Query params:
+  lat         float   — requerido, -90 a 90
+  lng         float   — requerido, -180 a 180
+  radius      int     — opcional, metros (100–50000)
+  type        string  — opcional: "restaurante" | "artesanías" |
+                        "museos" | "parques" | "compras"
+  subtype     string  — opcional (solo si type=restaurante):
+                        "desayuno" | "comida" | "cena" | "cafetería"
+  price_range int     — opcional, 1 a 4 ($ a $$$$)
+  limit       int     — opcional, 1–50 (default 20)
+  offset      int     — opcional, >= 0 (default 0)
+
+Respuesta 200:
+  {
+    "data": [ { ...negocio con place embebido } ],
+    "meta": {
+      "count"  : number,
+      "limit"  : number,
+      "offset" : number
+    }
+  }
+
+Errores:
+  400 — lat o lng faltantes o inválidos
+  401 — token ausente o inválido
+  500 — error interno
+
+
+--------------------------------------------------------------------
+GET /businesses/:id
+--------------------------------------------------------------------
+Descripción : Retorna un negocio completo por UUID, incluyendo
+              datos del place (dirección, fotos, horarios, teléfono)
+              y guías que lo visitan en sus tours.
+
+Auth        : Requerida (cualquier role)
+
+Path params:
+  id  UUID v4 — requerido
+
+Respuesta 200:
+  {
+    "data": { ...negocio completo con place y guías }
+  }
+
+Errores:
+  400 — id no es un UUID v4 válido
+  401 — token ausente o inválido
+  404 — negocio no encontrado
+  500 — error interno
+
+
+====================================================================
+  GUIDES
+====================================================================
+
+--------------------------------------------------------------------
+GET /guides
+--------------------------------------------------------------------
+Descripción : Lista guías disponibles cercanos usando PostGIS.
+              Soporta filtros por idioma, rating y tarifa.
+
+Auth        : Requerida (cualquier role)
+
+Query params:
+  lat         float   — requerido, -90 a 90
+  lng         float   — requerido, -180 a 180
+  radius      int     — opcional, metros (100–50000)
+  language    string  — opcional, código de idioma (ej: "es", "en")
+  min_rating  float   — opcional, 0 a 5
+  max_rate    float   — opcional, tarifa máxima en MXN/hora
+  limit       int     — opcional, 1–50 (default 20)
+  offset      int     — opcional, >= 0 (default 0)
+
+Respuesta 200:
+  {
+    "data": [ { ...perfil del guía } ],
+    "meta": {
+      "count"  : number,
+      "limit"  : number,
+      "offset" : number
+    }
+  }
+
+Errores:
+  400 — lat o lng faltantes o inválidos
+  401 — token ausente o inválido
+  500 — error interno
+
+
+--------------------------------------------------------------------
+GET /guides/:id
+--------------------------------------------------------------------
+Descripción : Perfil completo del guía incluyendo sus tours activos
+              con los places que visita en cada uno.
+
+Auth        : Requerida (cualquier role)
+
+Path params:
+  id  UUID v4 — requerido
+
+Respuesta 200:
+  {
+    "data": {
+      ...perfil del guía,
+      "tours": [ { ...tour con places } ]
+    }
+  }
+
+Errores:
+  400 — id no es un UUID v4 válido
+  401 — token ausente o inválido
+  404 — guía no encontrado
+  500 — error interno
+
+
+====================================================================
+  TOURS
+====================================================================
+
+--------------------------------------------------------------------
+GET /tours/:guideId
+--------------------------------------------------------------------
+Descripción : Todos los tours activos (available=true) de un guía,
+              con sus places y negocios aliados embebidos.
+
+Auth        : Requerida (cualquier role)
+
+Path params:
+  guideId  UUID v4 — requerido (UUID del perfil guides, no del user)
+
+Respuesta 200:
+  {
+    "data": [ { ...tour con places y negocios } ],
+    "meta": { "count": number }
+  }
+
+Errores:
+  400 — guideId no es un UUID v4 válido
+  401 — token ausente o inválido
+  500 — error interno
+
+
+--------------------------------------------------------------------
+GET /tours/:id/detail
+--------------------------------------------------------------------
+Descripción : Tour completo con places populadas (foto, nombre,
+              tipo, calificación), available_schedules como array
+              y datos del guía dueño del tour.
+
+Auth        : Requerida (cualquier role)
+
+Path params:
+  id  UUID v4 — requerido (UUID del tour)
+
+Respuesta 200:
+  {
+    "data": {
+      ...tour,
+      "available_schedules" : ["08:00", "13:00", ...],
+      "places"              : [ { ...place populado } ],
+      "guide"               : { ...datos del guía }
+    }
+  }
+
+Errores:
+  400 — id no es un UUID v4 válido
+  401 — token ausente o inválido
+  404 — tour no encontrado
+  500 — error interno
+
+
+====================================================================
+  CÓDIGOS DE ERROR GLOBALES
+====================================================================
+
+  400  Bad Request      — Validación fallida (body o query params)
+  401  Unauthorized     — Token ausente, expirado o inválido
+  403  Forbidden        — Token válido pero rol sin permiso
+  404  Not Found        — Recurso no encontrado
+  500  Internal Error   — Error inesperado del servidor
+
+====================================================================
+  EJEMPLO DE FLUJO COMPLETO
+====================================================================
+
+1. Registro:
+   POST /auth/register
+   Body: { "name": "Ana", "email": "ana@mail.com",
+           "password": "12345678", "role": "tourist" }
+   => Guarda el access_token recibido.
+
+2. Login (para sesiones posteriores):
+   POST /auth/login
+   Body: { "email": "ana@mail.com", "password": "12345678" }
+   => Guarda el access_token recibido.
+
+3. Usar endpoints protegidos:
+   GET /guides?lat=20.97&lng=-89.62&radius=5000
+   Header: Authorization: Bearer <access_token>
+
+4. Ver perfil propio:
+   GET /auth/me
+   Header: Authorization: Bearer <access_token>
+
+====================================================================

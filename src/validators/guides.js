@@ -56,8 +56,8 @@ const getGuideByIdValidator = [
   param("id")
     .notEmpty()
     .withMessage("id es requerido")
-    .isUUID(4)
-    .withMessage("id debe ser un UUID v4 válido"),
+    .isUUID()
+    .withMessage("id debe ser un UUID válido"),
 ];
  
 module.exports = { getGuidesValidator, getGuideByIdValidator };

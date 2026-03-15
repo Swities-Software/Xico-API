@@ -3,6 +3,7 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
 // Importe de rutas
+const authRouter = require('./routers/auth');
 const guidesRouter = require('./routers/guides');
 const businessesRouter = require('./routers/businesses');
 const toursRoute = require('./routers/tours');
@@ -46,6 +47,7 @@ app.get('/debug/tables', async (req, res) => {
 
 
 // Rutas
+app.use('/auth', authRouter);
 app.use('/guides', guidesRouter);
 app.use('/businesses', businessesRouter);
 app.use('/tours', toursRoute);
