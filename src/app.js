@@ -6,7 +6,10 @@ const morgan  = require('morgan');
 const authRouter = require('./routers/auth');
 const guidesRouter = require('./routers/guides');
 const businessesRouter = require('./routers/businesses');
-const toursRoute = require('./routers/tours');
+const toursRouter = require('./routers/tours');
+const bookingsRouter = require('./routers/bookings');
+const itineraryRouter = require('./routers/itinerary');
+
 
 const app = express();
 
@@ -50,6 +53,8 @@ app.get('/debug/tables', async (req, res) => {
 app.use('/auth', authRouter);
 app.use('/guides', guidesRouter);
 app.use('/businesses', businessesRouter);
-app.use('/tours', toursRoute);
+app.use('/tours', toursRouter);
+app.use('/bookings', bookingsRouter);
+app.use('/itinerary', itineraryRouter);
 
 module.exports = app;
