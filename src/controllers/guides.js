@@ -55,5 +55,28 @@ async function getGuideById(req, res) {
     return res.status(500).json({ error: "Error interno al obtener el guía" });
   }
 }
- 
-module.exports = { getGuides, getGuideById };
+
+/**
+ * PUT /guides/profile
+ * Actualiza el perfil del guía autenticado.
+ */
+async function updateGuideProfile(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const guide_id = req.query.guide_id;
+    const { bio, languages, hourly_rate, certification, available, photo_url } = req.body ?? {};
+
+    const guide = await guidesService.updateGuideProfile(guide_id, {
+      bio, languages, hourly_rate, certification, available, photo_url
+    });
+
+    return res.status(200).json({ data: guide });
+  } catch (error) {
+    console.error("[updateGuideProfile]", error.message);
+    return res.status(error.status ?? 500).json({ error: error.message });
+  }
+}
+
+module.exports = { getGuides, getGuideById, updateGuideProfile };

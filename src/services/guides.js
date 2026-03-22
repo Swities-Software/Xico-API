@@ -152,4 +152,77 @@ async function getGuideById(id) {
     };
 }
 
-module.exports = { getGuides, getGuideById };
+/**
+ * PUT /guides/profile
+ * Actualiza el perfil del guía autenticado.
+ * Campos actualizables: bio, languages, hourly_rate, certification, available
+ */
+async function updateGuideProfile(guide_id, { bio, languages, hourly_rate, certification, available, photo_url }) {
+  // 1. Verificar que el guía existe
+  const { data: existing, error: findError } = await supabase
+    .from("guides")
+    .select("id, user_id")
+    .eq("id", guide_id)
+    .single();
+
+  if (findError || !existing) throw { status: 404, message: "Guía no encontrado" };
+
+  // 2. Actualizar campos del perfil guía
+  const guideUpdates = {};
+  if (bio !== undefined) guideUpdates.bio = bio;
+  if (languages !== undefined) guideUpdates.languages = languages;
+  if (hourly_rate !== undefined) guideUpdates.hourly_rate = hourly_rate;
+  if (certification !== undefined) guideUpdates.certification = certification;
+  if (available !== undefined) guideUpdates.available = available;
+
+  if (Object.keys(guideUpdates).length > 0) {
+    const { error: guideError } = await supabase
+      .from("guides")
+      .update(guideUpdates)
+      .eq("id", guide_id);
+
+    if (guideError) throw { status: 500, message: `Error al actualizar guía: ${guideError.message}` };
+  }
+
+  // 3. Actualizar photo_url en users si viene
+  if (photo_url !== undefined) {
+    const { error: userError } = await supabase
+      .from("users")
+      .update({ photo_url })
+      .eq("id", existing.user_id);
+
+    if (userError) throw { status: 500, message: `Error al actualizar foto: ${userError.message}` };
+  }
+
+  // 4. Retornar perfil actualizado
+  const { data: updated, error: fetchError } = await supabase
+    .from("guides")
+    .select(`
+      id,
+      bio,
+      languages,
+      hourly_rate,
+      certification,
+      rating_avg,
+      reviews_count,
+      available,
+      user_id,
+      users!guides_user_id_fkey (
+        name,
+        photo_url
+      )
+    `)
+    .eq("id", guide_id)
+    .single();
+
+  if (fetchError) throw { status: 500, message: `Error al obtener perfil: ${fetchError.message}` };
+
+  const { users, ...guideFields } = updated;
+  return {
+    ...guideFields,
+    name: users?.name ?? null,
+    photo_url: users?.photo_url ?? null,
+  };
+}
+
+module.exports = { getGuides, getGuideById, updateGuideProfile };

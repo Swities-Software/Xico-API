@@ -1,4 +1,4 @@
-const { query, param} = require("express-validator")
+const { query, param, body} = require("express-validator")
 
 const getGuidesValidator = [
   query("lat")
@@ -59,5 +59,32 @@ const getGuideByIdValidator = [
     .isUUID()
     .withMessage("id debe ser un UUID válido"),
 ];
- 
-module.exports = { getGuidesValidator, getGuideByIdValidator };
+
+const updateGuideProfileValidator = [
+  body("bio")
+    .optional()
+    .isString()
+    .isLength({ max: 500 }).withMessage("bio máximo 500 caracteres"),
+
+  body("languages")
+    .optional()
+    .isArray({ min: 1 }).withMessage("languages debe ser un array con al menos 1 idioma"),
+
+  body("hourly_rate")
+    .optional()
+    .isFloat({ min: 0 }).withMessage("hourly_rate debe ser un número positivo"),
+
+  body("certification")
+    .optional()
+    .isURL().withMessage("certification debe ser una URL válida de Cloudinary"),
+
+  body("photo_url")
+    .optional()
+    .isURL().withMessage("photo_url debe ser una URL válida de Cloudinary"),
+
+  body("available")
+    .optional()
+    .isBoolean().withMessage("available debe ser true o false"),
+];
+
+module.exports = { getGuidesValidator, getGuideByIdValidator, updateGuideProfileValidator };

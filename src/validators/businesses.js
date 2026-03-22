@@ -1,4 +1,4 @@
-const { query, param } = require("express-validator");
+const { query, param, body } = require("express-validator");
  
 const getBusinessesValidator = [
   query("lat")
@@ -60,5 +60,33 @@ const getBusinessByIdValidator = [
     .isUUID()
     .withMessage("id debe ser un UUID válido"),
 ];
- 
-module.exports = { getBusinessesValidator, getBusinessByIdValidator };
+
+const updateBusinessProfileValidator = [
+  body("description")
+    .optional()
+    .isString()
+    .isLength({ max: 1000 }).withMessage("description máximo 1000 caracteres"),
+
+  body("history")
+    .optional()
+    .isString()
+    .isLength({ max: 1000 }).withMessage("history máximo 1000 caracteres"),
+
+  body("logo_url")
+    .optional()
+    .isURL().withMessage("logo_url debe ser una URL válida de Cloudinary"),
+
+  body("photos")
+    .optional()
+    .isArray({ max: 5 }).withMessage("photos máximo 5 fotos"),
+
+  body("price_range")
+    .optional()
+    .isInt({ min: 1, max: 4 }).withMessage("price_range debe ser entre 1 y 4"),
+
+  body("active")
+    .optional()
+    .isBoolean().withMessage("active debe ser true o false"),
+];
+
+module.exports = { getBusinessesValidator, getBusinessByIdValidator, updateBusinessProfileValidator };

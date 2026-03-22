@@ -56,4 +56,27 @@ async function getBusinessById(req, res) {
     }
 }
 
-module.exports = { getBusinesses, getBusinessById };
+/**
+ * PUT /businesses/profile
+ * Actualiza el perfil del negocio autenticado.
+ */
+async function updateBusinessProfile(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const business_id = req.query.business_id; // TODO: req.user.business_id
+    const { description, history, logo_url, photos, price_range, active } = req.body ?? {};
+
+    const business = await businessesService.updateBusinessProfile(business_id, {
+      description, history, logo_url, photos, price_range, active
+    });
+
+    return res.status(200).json({ data: business });
+  } catch (error) {
+    console.error("[updateBusinessProfile]", error.message);
+    return res.status(error.status ?? 500).json({ error: error.message });
+  }
+}
+
+module.exports = { getBusinesses, getBusinessById, updateBusinessProfile };

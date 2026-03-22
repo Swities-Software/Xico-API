@@ -170,4 +170,101 @@ async function getBusinessById(id) {
     };
 }
 
-module.exports = { getBusinesses, getBusinessById };
+/**
+ * PUT /businesses/profile
+ * Actualiza el perfil del negocio autenticado.
+ * Campos actualizables: description, history, logo_url, photos[], price_range, active
+ */
+async function updateBusinessProfile(business_id, { description, history, logo_url, photos, price_range, active }) {
+  // 1. Verificar que el negocio existe
+  const { data: existing, error: findError } = await supabase
+    .from("businesses")
+    .select("id, user_id")
+    .eq("id", business_id)
+    .single();
+
+  if (findError || !existing) throw { status: 404, message: "Negocio no encontrado" };
+
+  // 2. Construir objeto de actualizaciones
+  const updates = {};
+  if (description !== undefined) updates.description = description;
+  if (history !== undefined) updates.history = history;
+  if (logo_url !== undefined) updates.logo_url = logo_url;
+  if (photos !== undefined) updates.photos = photos;
+  if (price_range !== undefined) updates.price_range = price_range;
+  if (active !== undefined) updates.active = active;
+
+  if (Object.keys(updates).length === 0) {
+    // Sin cambios, retornar el perfil actual
+    const { data: current, error: fetchError } = await supabase
+      .from("businesses")
+      .select(`
+        id,
+        description,
+        history,
+        logo_url,
+        photos,
+        price_range,
+        active,
+        rating_avg,
+        user_id,
+        place_id,
+        places!businesses_place_id_fkey (
+          id,
+          name,
+          type,
+          address,
+          phone,
+          schedule,
+          photo_url,
+          rating_avg
+        )
+      `)
+      .eq("id", business_id)
+      .single();
+
+    if (fetchError) throw { status: 500, message: `Error al obtener perfil: ${fetchError.message}` };
+    return current;
+  }
+
+  // 3. Actualizar
+  const { error: updateError } = await supabase
+    .from("businesses")
+    .update(updates)
+    .eq("id", business_id);
+
+  if (updateError) throw { status: 500, message: `Error al actualizar negocio: ${updateError.message}` };
+
+  // 4. Retornar perfil actualizado
+  const { data: updated, error: fetchError } = await supabase
+    .from("businesses")
+    .select(`
+      id,
+      description,
+      history,
+      logo_url,
+      photos,
+      price_range,
+      active,
+      rating_avg,
+      user_id,
+      place_id,
+      places!businesses_place_id_fkey (
+        id,
+        name,
+        type,
+        address,
+        phone,
+        schedule,
+        photo_url,
+        rating_avg
+      )
+    `)
+    .eq("id", business_id)
+    .single();
+
+  if (fetchError) throw { status: 500, message: `Error al obtener perfil: ${fetchError.message}` };
+  return updated;
+}
+
+module.exports = { getBusinesses, getBusinessById, updateBusinessProfile };
