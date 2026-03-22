@@ -142,7 +142,7 @@ async function assignGuide({ tourist_id, guide_id, tour_id, date, time_slot }) {
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert({
-      tourist_id,
+      tourist_id, 
       guide_id,
       tour_id,
       date,
